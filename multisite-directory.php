@@ -49,7 +49,8 @@ class WP_Multisite_Directory {
         add_action('delete_blog', array(__CLASS__, 'delete_blog'), 10, 2);
         add_action('network_admin_menu', array('WP_Multisite_Directory_Admin', 'network_admin_menu'));
         add_action('signup_blogform', array(__CLASS__, 'signup_blogform'));
-        add_action('add_signup_meta', array(__CLASS__, 'add_signup_meta'));
+        add_action('network_site_new_form', array(__CLASS__, 'signup_blogform'));
+//        add_action('add_signup_meta', array(__CLASS__, 'add_signup_meta'));
 
         add_filter('dashboard_glance_items', array(__CLASS__, 'dashboard_glance_items'));
 
@@ -109,7 +110,10 @@ class WP_Multisite_Directory {
      * @param int $blog_id
      */
     public static function wpmu_new_blog ($blog_id) {
-        $signup_cats = get_blog_option($blog_id, 'multisite-directory-signup-categories');
+        if (isset($_POST['tax_input']) && !empty($_POST['tax_input'][Multisite_Directory_Taxonomy::name])) {
+            $signup_cats = $_POST['tax_input'][Multisite_Directory_Taxonomy::name];
+        }
+//        $signup_cats = get_blog_option($blog_id, 'multisite-directory-signup-categories');
         $cpt = new Multisite_Directory_Entry();
         $post_id = $cpt->add_new_site_post($blog_id);
         if (!is_wp_error($post_id) && !empty($signup_cats)) {
@@ -179,19 +183,20 @@ class WP_Multisite_Directory {
      * @todo Handle "large" networks correctly.
      */
     private function initializeDirectory () {
-        $sites = wp_get_sites(array(
+        $sites = get_sites(array(
             'spam'    => 0, // don't include sites marked as spam
             'deleted' => 0, // or sites that have been "deleted".
+            'number'  => null, // return all sites (defaults to 100)
         ));
         $cpt = new Multisite_Directory_Entry();
         foreach ($sites as $site) {
             $posts = $cpt->get_posts(array(
                 'post_status' => 'any',
                 'meta_key'    => $cpt::blog_id_meta_key,
-                'meta_value'  => $site['blog_id']
+                'meta_value'  => $site->blog_id
             ));
             if (empty($posts)) {
-                $cpt->add_new_site_post($site['blog_id']);
+                $cpt->add_new_site_post($site->blog_id);
             }
         }
     }
@@ -220,12 +225,14 @@ class WP_Multisite_Directory {
      *
      * @param array $meta
      */
+/*
     public static function add_signup_meta ($meta) {
         if (isset($_POST['tax_input']) && !empty($_POST['tax_input'][Multisite_Directory_Taxonomy::name])) {
             $meta['multisite-directory-signup-categories'] = $_POST['tax_input'][Multisite_Directory_Taxonomy::name];
         }
         return $meta;
     }
+*/
 
     /**
      * Adds an "At A Glance" item to a site dashboard showing this site's categorization in the directory.
