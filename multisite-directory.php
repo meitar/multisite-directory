@@ -41,6 +41,7 @@ class WP_Multisite_Directory {
         require_once 'admin/class-multisite-directory-admin.php';
 
         add_action('init', array(__CLASS__, 'initialize'));
+        add_action('plugins_loaded', array(__CLASS__, 'load_textdomain'));
         add_action('widgets_init', array(__CLASS__, 'widgets_initialize'));
         add_action('admin_enqueue_scripts', array(__CLASS__, 'register_scripts'));
         add_action('wp_enqueue_scripts', array(__CLASS__, 'register_scripts'));
@@ -51,6 +52,7 @@ class WP_Multisite_Directory {
         add_action('signup_blogform', array(__CLASS__, 'signup_blogform'));
         add_action('network_site_new_form', array(__CLASS__, 'signup_blogform'));
 //        add_action('add_signup_meta', array(__CLASS__, 'add_signup_meta'));
+        add_action('template_redirect', array(__CLASS__, 'template_redirect'));
 
         add_filter('dashboard_glance_items', array(__CLASS__, 'dashboard_glance_items'));
 
@@ -70,6 +72,15 @@ class WP_Multisite_Directory {
         $cpt->register();
 
         Multisite_Directory_Shortcode::register();
+    }
+
+    /**
+     * Loads the plugin's translations
+     *
+     * @link https://developer.wordpress.org/reference/functions/load_plugin_textdomain/
+     */
+    public static function load_textdomain() {
+        load_plugin_textdomain('multisite-directory', false, plugin_basename( dirname( __FILE__ ) ) . '/languages');
     }
 
     /**
@@ -251,6 +262,16 @@ class WP_Multisite_Directory {
             }
         }
         return $items;
+    }
+
+    /**
+     * Redirects single site post to the actual site
+     */
+    public static function template_redirect () {
+        if (is_singular(Multisite_Directory_Entry::name)) {
+            wp_redirect(get_site_permalink());
+            exit;
+        }
     }
 
 }
