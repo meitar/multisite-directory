@@ -229,7 +229,7 @@ class WP_Multisite_Directory {
         $label = '<label>'.__('Site Categories:', 'multisite-directory').'</label>';
 
         print '<div id="multisite-directory-signup-categories">';
-        if ($pagenow == 'site-new.php') {
+        if ('site-new.php' == $pagenow) {
             print '<table class="form-table">';
             print '<tbody><tr class="form-field"><th scope="row">';
             print $label;
