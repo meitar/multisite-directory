@@ -225,7 +225,7 @@ class WP_Multisite_Directory {
             'taxonomy' => Multisite_Directory_Taxonomy::name,
             'echo'     => false,
         ));
-        $html = str_replace("disabled='disabled'", '', $html);
+        $html = '<ul style="list-style:none; margin:0;">' . str_replace("disabled='disabled'", '', $html) . '</ul>';
         $label = '<label>'.__('Site Categories:', 'multisite-directory').'</label>';
 
         print '<div id="multisite-directory-signup-categories">';
