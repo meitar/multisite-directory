@@ -30,16 +30,22 @@ endif;
 
 if (!function_exists('get_site_directory_terms')) :
     /**
-     * Gets all categories in the site directory.
+     * Gets categories in the site directory.
+     *
+     * @param array $slugs Optional. Slugs of categories to retrieve. Default is to retrieve all categories.
+     * @param array $exclude Optional. IDs of categories to exclude.
      *
      * @uses get_terms()
      *
      * @return array|false|WP_Error
      */
-    function get_site_directory_terms () {
+    function get_site_directory_terms ($slugs = array(), $exclude = array() ) {
         switch_to_blog(get_directory_blog_id());
-        $terms = get_terms(Multisite_Directory_Taxonomy::name, array(
+        $terms = get_terms( array(
+            'taxonomy' => Multisite_Directory_Taxonomy::name,
             'hide_empty' => false,
+            'slug' => $slugs,
+            'exclude' => $exclude,
         ));
         restore_current_blog();
         return $terms;
@@ -48,19 +54,25 @@ endif;
 
 if (!function_exists('get_site_directory_location_terms')) :
     /**
-     * Gets all categories in the site directory that have location metadata.
+     * Gets categories in the site directory that have location metadata.
+     *
+     * @param array $slugs Optional. Slugs of categories to retrieve. Default is to retrieve all categories.
+     * @param array $exclude Optional. IDs of categories to exclude.
      *
      * @return array|false|WP_Error
      */
-    function get_site_directory_location_terms () {
+    function get_site_directory_location_terms ($slugs = array(), $exclude = array() ) {
         switch_to_blog(get_directory_blog_id());
-        $terms = get_terms(Multisite_Directory_Taxonomy::name, array(
+        $terms = get_terms( array(
+            'taxonomy' => Multisite_Directory_Taxonomy::name,
             'hide_empty' => false,
             'meta_query' => array(
                 array(
                     'key' => 'geo',
                 )
             ),
+            'slug' => $slugs,
+            'exclude' => $exclude,
         ));
         restore_current_blog();
         return $terms;
@@ -103,11 +115,12 @@ if (!function_exists('get_sites_in_directory_by_term')) :
      *
      * @param WP_Term $term
      * @param array $args
+     * @param string $exclude Optional. IDs of categories to exclude. Sites with these categories will be excluded from the list.
      *
      * @return array
      */
-    function get_sites_in_directory_by_term ($term, $args = array()) {
-        $args = wp_parse_args($args, array(
+    function get_sites_in_directory_by_term ($term, $args = array(), $exclude = array() ) {
+        $defaults = array(
             'numberposts' => -1,
             'tax_query' => array(
                 array(
@@ -116,7 +129,17 @@ if (!function_exists('get_sites_in_directory_by_term')) :
                     'terms' => array($term->term_id),
                 ),
             ),
-        ));
+        );
+        if (!empty($exclude)) {
+            $defaults['tax_query']['relation'] = 'AND';
+            $defaults['tax_query'][] = array(
+                'taxonomy' => $term->taxonomy,
+                'field' => 'term_id',
+                'terms' => $exclude,
+                'operator' => 'NOT IN',
+            );
+        }
+        $args = wp_parse_args($args, $defaults);
         $cpt = new Multisite_Directory_Entry();
         $posts = $cpt->get_posts($args);
         $details = array();

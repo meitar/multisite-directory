@@ -19,6 +19,7 @@
  * * `style` - An inline `style` attribute, useful for adding custom CSS to the container.
  * * `display` - A string describing how to display the sites. Can be either `list` or `map`. (Default: `map`.)
  * * `terms` - A space-separated list of term slugs to limit the directory to. Omit this to include all terms.
+ * * `exclude` - A space-separated list of term slugs to exclude from the list. Omit this to include all terms.
  * * `show_site_logo` - Whether or not to show site logos in output. Omit this not to show site logos.
  * * `logo_size` - A registered image size that your theme supports. Ignored if `show_site_logo` is not enabled. Defaults to 70px by 70px.
  * * `query_args` - A JSON-formatted string to pass to `get_posts()`
@@ -67,7 +68,8 @@ class Multisite_Directory_Shortcode {
             // Recognized shortcode attribute names and their values.
             'display' => 'map',
             'style'  => '',
-            'terms' => array(),
+            'terms' => '',
+            'exclude' => '',
             'show_site_logo' => false,
             'logo_size' => array(72,72),
             'query_args' => '', // Should be a JSON array which is passed to get_posts()
@@ -105,10 +107,22 @@ class Multisite_Directory_Shortcode {
         $cpt = new Multisite_Directory_Entry();
         $html = '';
 
+        // Converts the 'terms' shortcode attribute to an array to use with get_terms()
+        $slugs = empty($this->atts['terms']) ? array() : preg_split('/\s+/', $this->atts['terms']);
+
+        // Converts the 'exclude' shortcode attribute to an array of term IDs (the 'exclude' parameter of get_terms() takes only IDs)
+        $exclude = array();
+        if (!empty($this->atts['exclude'])) {
+            foreach (preg_split('/\s+/', $this->atts['exclude']) as $term) {
+                $term_data = get_term_by('slug', $term, Multisite_Directory_Taxonomy::name);
+                $exclude[] = $term_data->term_id;
+            }
+        }
+
         // When displaying a map
         if ('map' === $this->atts['display']) {
             // Find all mappable terms
-            $terms = get_site_directory_location_terms();
+            $terms = get_site_directory_location_terms($slugs, $exclude);
 
             // Turn that into GeoJSON (easier to map)
             $data = $this->makeGeoJSON($terms);
@@ -118,13 +132,13 @@ class Multisite_Directory_Shortcode {
         } else if ('list' === $this->atts['display']) {
             ob_start();
 
-            $terms = get_site_directory_terms();
+            $terms = get_site_directory_terms($slugs, $exclude);
             if (!is_wp_error($terms) && !empty($terms)) {
                 // TODO: Refactor this so it's not embedded HTML.
                 //       I used output buffering just for now.
 ?>
 <ul class="network-directory-sites">
-    <?php foreach ($terms as $term) { $similar_sites = get_sites_in_directory_by_term($term, $this->atts['query_args']); ?>
+    <?php foreach ($terms as $term) { $similar_sites = get_sites_in_directory_by_term($term, $this->atts['query_args'], $exclude); ?>
     <li><?php print esc_html($term->name); ?>
         <ul>
         <?php foreach ($similar_sites as $site_detail) { if (get_current_blog_id() == $site_detail->blog_id) { continue; } ?>
