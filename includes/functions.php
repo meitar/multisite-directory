@@ -115,7 +115,7 @@ if (!function_exists('get_sites_in_directory_by_term')) :
      *
      * @param WP_Term $term
      * @param array $args
-     * @param string $exclude Optional. IDs of categories to exclude. Sites with these categories will be excluded from the list.
+     * @param array $exclude Optional. IDs of categories to exclude. Sites with these categories will be excluded from the list.
      *
      * @return array
      */
