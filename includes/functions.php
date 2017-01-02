@@ -30,17 +30,21 @@ endif;
 
 if (!function_exists('get_site_directory_terms')) :
     /**
-     * Gets all categories in the site directory.
+     * Gets categories in the site directory.
+     *
+     * @param array $args
      *
      * @uses get_terms()
      *
      * @return array|false|WP_Error
      */
-    function get_site_directory_terms () {
+    function get_site_directory_terms ($args = array()) {
         switch_to_blog(get_directory_blog_id());
-        $terms = get_terms(Multisite_Directory_Taxonomy::name, array(
+        $args = wp_parse_args($args, array(
+            'taxonomy' => Multisite_Directory_Taxonomy::name,
             'hide_empty' => false,
         ));
+        $terms = get_terms($args);
         restore_current_blog();
         return $terms;
     }
@@ -48,13 +52,16 @@ endif;
 
 if (!function_exists('get_site_directory_location_terms')) :
     /**
-     * Gets all categories in the site directory that have location metadata.
+     * Gets categories in the site directory that have location metadata.
+     *
+     * @param array $args
      *
      * @return array|false|WP_Error
      */
-    function get_site_directory_location_terms () {
+    function get_site_directory_location_terms ($args = array()) {
         switch_to_blog(get_directory_blog_id());
-        $terms = get_terms(Multisite_Directory_Taxonomy::name, array(
+        $args = wp_parse_args($args, array(
+            'taxonomy' => Multisite_Directory_Taxonomy::name,
             'hide_empty' => false,
             'meta_query' => array(
                 array(
@@ -62,6 +69,7 @@ if (!function_exists('get_site_directory_location_terms')) :
                 )
             ),
         ));
+        $terms = get_terms($args);
         restore_current_blog();
         return $terms;
     }
@@ -107,7 +115,7 @@ if (!function_exists('get_sites_in_directory_by_term')) :
      * @return array
      */
     function get_sites_in_directory_by_term ($term, $args = array()) {
-        $args = wp_parse_args($args, array(
+        $args = array_merge_recursive( array(
             'numberposts' => -1,
             'tax_query' => array(
                 array(
@@ -116,7 +124,7 @@ if (!function_exists('get_sites_in_directory_by_term')) :
                     'terms' => array($term->term_id),
                 ),
             ),
-        ));
+        ), $args);
         $cpt = new Multisite_Directory_Entry();
         $posts = $cpt->get_posts($args);
         $details = array();
@@ -125,6 +133,19 @@ if (!function_exists('get_sites_in_directory_by_term')) :
             $details[] = get_blog_details($post->{$cpt::blog_id_meta_key});
         }
         restore_current_blog();
+
+        // If selected to order by 'blogname', sort the resulting array to use actual site titles
+        if (isset($args['orderby']) && ('blogname' == $args['orderby'])) {
+            usort($details, function($a, $b) use($args) {
+                if (isset($args['order']) && 'ASC' == $args['order']) { // WP default for 'order' is 'DESC'
+                    return strcmp($a->blogname, $b->blogname);
+                }
+                else {
+                    return strcmp($b->blogname, $a->blogname);
+                }
+            });
+        }
+
         return $details;
     }
 endif;
