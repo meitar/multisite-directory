@@ -70,6 +70,8 @@ class Multisite_Directory_Shortcode {
             'style'  => '',
             'terms' => '',
             'exclude' => '',
+            'orderby' => '',
+            'order' => '',
             'show_site_logo' => false,
             'logo_size' => array(72,72),
             'query_args' => '', // Should be a JSON array which is passed to get_posts()
@@ -122,7 +124,7 @@ class Multisite_Directory_Shortcode {
         // When displaying a map
         if ('map' === $this->atts['display']) {
             // Find all mappable terms
-            $terms = get_site_directory_location_terms($slugs, $exclude);
+            $terms = get_site_directory_location_terms( array('slug' => $slugs, 'exclude' => $exclude) );
 
             // Turn that into GeoJSON (easier to map)
             $data = $this->makeGeoJSON($terms);
@@ -132,13 +134,31 @@ class Multisite_Directory_Shortcode {
         } else if ('list' === $this->atts['display']) {
             ob_start();
 
-            $terms = get_site_directory_terms($slugs, $exclude);
+            $terms = get_site_directory_terms( array('slug' => $slugs, 'exclude' => $exclude) );
+
             if (!is_wp_error($terms) && !empty($terms)) {
                 // TODO: Refactor this so it's not embedded HTML.
                 //       I used output buffering just for now.
+                $args = array();
+                if (!empty($this->atts['orderby'])) {
+                    $args['orderby'] = $this->atts['orderby'];
+                }
+                if (!empty($this->atts['order'])) {
+                    $args['order'] = $this->atts['order'];
+                }
+                if (!empty($this->atts['exclude'])) {
+                    $args['tax_query']['relation'] = 'AND';
+                    $args['tax_query'][] = array(
+                        'taxonomy' => Multisite_Directory_Taxonomy::name,
+                        'field' => 'term_id',
+                        'terms' => $this->atts['exclude'],
+                        'operator' => 'NOT IN',
+                    );
+                }
+                $args = array_merge_recursive($args, (array) json_decode($this->atts['query_args']));
 ?>
 <ul class="network-directory-sites">
-    <?php foreach ($terms as $term) { $similar_sites = get_sites_in_directory_by_term($term, $this->atts['query_args'], $exclude); ?>
+    <?php foreach ($terms as $term) { $similar_sites = get_sites_in_directory_by_term($term, $args); ?>
     <li><?php print esc_html($term->name); ?>
         <ul>
         <?php foreach ($similar_sites as $site_detail) { if (get_current_blog_id() == $site_detail->blog_id) { continue; } ?>
